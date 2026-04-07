@@ -117,9 +117,12 @@ class MatrixFactorizationRecommender:
         unique_users: list[int] = sorted(df["user_id"].unique())
         unique_books: list[int] = sorted(df["book_id"].unique())
 
-        self.user_id_to_idx = {uid: i for i, uid in enumerate(unique_users)}
-        self.book_id_to_idx = {bid: j for j, bid in enumerate(unique_books)}
-        self.idx_to_book_id = {j: bid for bid, j in self.book_id_to_idx.items()}
+        # Cast to plain Python int — pandas unique() returns numpy.int64, and
+        # SQLAlchemy 2.0's identity-map lookup is type-strict: db.get(Book, numpy.int64)
+        # misses the cache and returns None instead of querying the DB.
+        self.user_id_to_idx = {int(uid): i for i, uid in enumerate(unique_users)}
+        self.book_id_to_idx = {int(bid): j for j, bid in enumerate(unique_books)}
+        self.idx_to_book_id = {j: int(bid) for bid, j in self.book_id_to_idx.items()}
 
         n_users = len(unique_users)
         n_books = len(unique_books)

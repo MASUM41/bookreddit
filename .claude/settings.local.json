@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uvicorn app.main:app --reload --port 8000)",
+      "Bash(echo \"Backend PID: $!\")",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(echo \"Frontend PID: $!\")",
+      "Bash(pip install:*)",
+      "Bash(curl:*)",
+      "Bash(python -c ':*)",
+      "Bash(python -m json.tool)",
+      "Bash(pkill -f \"uvicorn app.main\")",
+      "Bash(python -c \"import json,sys; b=json.load\\(sys.stdin\\); print\\('Server up, book:', b['title']\\)\")",
+      "Bash(python -c \"import json,sys; r=json.load\\(sys.stdin\\); print\\('Trained:', r['matrix_shape'], 'loss:', r['initial_loss'], '->', r['final_loss']\\)\")",
+      "Bash(pkill -f uvicorn)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(uvicorn app.main:app --port 8000)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 17468 /F)",
+      "Bash(taskkill /PID 22032 /F)",
+      "Bash(taskkill /PID 5012 /F)",
+      "Bash(taskkill /IM python.exe /F)",
+      "Bash(powershell:*)",
+      "Bash(xargs -I{} powershell -Command \"Stop-Process -Id {} -Force\" sleep 3 netstat -ano)",
+      "Bash(python -c \"import json,sys; b=json.load\\(sys.stdin\\); print\\(f'Backend OK - {len\\(b\\)} books'\\)\")"
+    ]
+  }
+}

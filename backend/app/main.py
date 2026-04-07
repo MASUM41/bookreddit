@@ -170,9 +170,11 @@ def get_recommendations(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail=str(exc))
 
     # Hydrate book_ids → full Book rows so the response carries useful metadata
+    # book_id values are guaranteed Python int (not numpy.int64) by the recommender
     recommendations: list[schemas.RecommendedBook] = []
     for entry in top_books:
-        book = crud.get_book(db, entry["book_id"])
+        book_id = int(entry["book_id"])   # belt-and-suspenders cast for SQLAlchemy 2.0
+        book = crud.get_book(db, book_id)
         if book:
             recommendations.append(
                 schemas.RecommendedBook(
