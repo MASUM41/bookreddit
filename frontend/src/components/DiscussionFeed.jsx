@@ -1,60 +1,103 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { PenLine } from 'lucide-react'
 import { useFeed } from '../hooks/useFeed'
+import { useAuth } from '../context/AuthContext'
 import PostCard from './PostCard'
 
-export default function DiscussionFeed() {
-  const { posts, loading, error, hasMore, loadMore } = useFeed()
+const SORT_TABS = [
+  { id: 'hot', label: 'Hot' },
+  { id: 'new', label: 'New' },
+  { id: 'top', label: 'Top' },
+]
+
+export default function DiscussionFeed({
+  defaultSort = 'hot',
+  lockSort = false,
+  title = null,
+}) {
+  const { feedVersion, user } = useAuth()
+  const [sort, setSort] = useState(defaultSort)
+  const activeSort = lockSort ? defaultSort : sort
+  const { posts, loading, error, hasMore, loadMore } = useFeed(feedVersion, activeSort)
 
   return (
     <section>
-      {/* Feed header */}
-      <div className="bg-white border border-gray-200 rounded px-4 py-2.5 mb-3 flex items-center gap-3">
-        <button className="text-sm font-bold text-orange-500 border-b-2 border-orange-500 pb-1">
-          Hot
-        </button>
-        <button className="text-sm font-medium text-gray-500 hover:text-gray-800 pb-1 transition-colors">
-          New
-        </button>
-        <button className="text-sm font-medium text-gray-500 hover:text-gray-800 pb-1 transition-colors">
-          Top
-        </button>
+      {title && (
+        <h1 className="text-lg font-bold text-br-text mb-3">{title}</h1>
+      )}
+
+      <div className="bg-br-surface border border-reddit-border rounded-2xl px-4 py-2.5 mb-3 flex items-center gap-3">
+        {SORT_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => !lockSort && setSort(tab.id)}
+            disabled={lockSort && tab.id !== defaultSort}
+            className={`text-sm pb-1 transition-colors ${
+              activeSort === tab.id
+                ? 'font-bold text-reddit-orange border-b-2 border-reddit-orange'
+                : 'font-medium text-br-text-muted hover:text-br-text'
+            } ${lockSort && tab.id !== defaultSort ? 'opacity-40 cursor-default' : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+
+        <div className="ml-auto">
+          {user ? (
+            <Link
+              to="/create-post"
+              className="inline-flex items-center gap-1.5 bg-reddit-orange text-white rounded-full
+                         px-4 py-1 text-xs font-bold hover:bg-orange-600 transition-colors"
+            >
+              <PenLine size={14} />
+              Create Post
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 border border-orange-500 text-orange-500
+                         rounded-full px-4 py-1 text-xs font-semibold hover:bg-orange-500/10 transition-colors"
+            >
+              <PenLine size={14} />
+              Log in to Post
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* Error state */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded px-4 py-3 text-sm text-red-700">
+        <div className="bg-red-500/10 border border-red-500/30 rounded px-4 py-3 text-sm text-red-600 dark:text-red-400">
           ⚠ {error}
         </div>
       )}
 
-      {/* Empty state */}
       {!error && posts.length === 0 && !loading && (
-        <div className="bg-white border border-gray-200 rounded px-4 py-8 text-center text-gray-500 text-sm">
+        <div className="bg-br-surface border border-reddit-border rounded px-4 py-8 text-center text-br-text-muted text-sm">
           No discussions yet. Create a post to get the conversation going.
         </div>
       )}
 
-      {/* Post list */}
       <div className="flex flex-col gap-2.5">
         {posts.map(post => (
           <PostCard key={post.id} post={post} />
         ))}
       </div>
 
-      {/* Loading spinner */}
       {loading && (
-        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded px-4 py-4 mt-2.5">
+        <div className="flex items-center gap-3 bg-br-surface border border-reddit-border rounded px-4 py-4 mt-2.5">
           <div className="spinner" />
-          <span className="text-sm text-gray-500">Loading posts…</span>
+          <span className="text-sm text-br-text-muted">Loading posts…</span>
         </div>
       )}
 
-      {/* Load more */}
       {!loading && hasMore && posts.length > 0 && (
         <div className="flex justify-center mt-4">
           <button
             onClick={loadMore}
-            className="border border-gray-300 text-gray-600 rounded-full px-6 py-1.5 text-sm
-                       font-semibold hover:bg-gray-100 hover:border-gray-400 transition-colors"
+            className="border border-reddit-border text-br-text-secondary rounded-full px-6 py-1.5 text-sm
+                       font-semibold hover:bg-reddit-muted hover:border-br-text-muted transition-colors"
           >
             Load more
           </button>

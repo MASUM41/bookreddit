@@ -28,7 +28,10 @@ frontend/.env.*.local
 .env.local
 *.env
 
-# ── OS / editor ───────────────────────────────────────────────────────────────
+# ── Uploaded post media ───────────────────────────────────────────────────────
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 .DS_Store
 Thumbs.db
 .vscode/

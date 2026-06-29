@@ -36,10 +36,9 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import text
 
-from .database import engine
-from .models import InteractionType
+from .mf_training import als_fit, bpr_finetune, spectral_initialize
+from .signal_matrix import load_combined_interactions
 
 
 class MatrixFactorizationRecommender:
@@ -49,7 +48,7 @@ class MatrixFactorizationRecommender:
         n_factors: int = 20,
         lr: float = 0.005,
         reg: float = 0.02,
-        n_epochs: int = 100,
+        n_epochs: int = 40,
         seed: int = 42,
     ) -> None:
         """
@@ -79,18 +78,10 @@ class MatrixFactorizationRecommender:
 
     def _load_dataframe(self) -> pd.DataFrame:
         """
-        Pull all rating interactions from SQLite into a Pandas DataFrame.
-        Returns columns: user_id, book_id, value.
+        Pull combined explicit + implicit interactions.
+        Returns columns: user_id, book_id, value, confidence.
         """
-        query = text("""
-            SELECT user_id, book_id, value
-            FROM user_book_interactions
-            WHERE interaction_type = :itype
-            ORDER BY user_id, book_id
-        """)
-        with engine.connect() as conn:
-            df = pd.read_sql(query, conn, params={"itype": InteractionType.rating.value})
-        return df
+        return load_combined_interactions()
 
     # ── training ──────────────────────────────────────────────────────────────
 
@@ -107,8 +98,8 @@ class MatrixFactorizationRecommender:
 
         if df.empty:
             raise ValueError(
-                "No rating interactions in the database. "
-                "Log some ratings via POST /interactions/ before training."
+                "No interactions in the database. "
+                "Rate books or vote on posts before training."
             )
 
         # ── index mappings ────────────────────────────────────────────────────
@@ -133,6 +124,7 @@ class MatrixFactorizationRecommender:
         u_indices = df["user_id"].map(self.user_id_to_idx).to_numpy(dtype=np.int32)
         b_indices = df["book_id"].map(self.book_id_to_idx).to_numpy(dtype=np.int32)
         ratings   = df["value"].to_numpy(dtype=np.float64)
+        confidences = df["confidence"].to_numpy(dtype=np.float64)
 
         # observed: shape (nnz, 2) — each row is [u_idx, b_idx]
         observed = np.column_stack([u_indices, b_indices])
@@ -144,12 +136,43 @@ class MatrixFactorizationRecommender:
             self.rated_books.setdefault(int(u_idx), set()).add(int(b_idx))
 
         # ── initialise latent factor matrices ─────────────────────────────────
-        # Small values from N(0, σ) break symmetry; σ = 1/√k is a stable choice
         sigma = 1.0 / np.sqrt(self.n_factors)
         self.P = self._rng.normal(0.0, sigma, (n_users, self.n_factors))
         self.Q = self._rng.normal(0.0, sigma, (n_books,  self.n_factors))
 
-        # ── SGD loop ──────────────────────────────────────────────────────────
+        init_method = "spectral_als"
+        try:
+            spectral_initialize(
+                self.P, self.Q, u_indices, b_indices, ratings, confidences
+            )
+        except Exception:
+            init_method = "random"
+
+        als_losses = als_fit(
+            self.P,
+            self.Q,
+            u_indices,
+            b_indices,
+            ratings,
+            confidences,
+            self.reg,
+            n_iterations=5,
+        )
+
+        bpr_steps = 40
+        bpr_finetune(
+            self.P,
+            self.Q,
+            u_indices,
+            b_indices,
+            confidences,
+            self.reg,
+            n_steps=bpr_steps,
+            lr=0.02,
+            rng=self._rng,
+        )
+
+        # ── confidence-weighted SGD loop ──────────────────────────────────────
         initial_loss: float = 0.0
         final_loss:   float = 0.0
 
@@ -161,15 +184,15 @@ class MatrixFactorizationRecommender:
                 u = int(observed[idx, 0])
                 i = int(observed[idx, 1])
                 r_ui = ratings[idx]
+                c_ui = confidences[idx]
 
-                p_u = self.P[u].copy()   # save old pᵤ — q update must use it
-                q_i = self.Q[i].copy()   # save old qᵢ — p update must use it
+                p_u = self.P[u].copy()
+                q_i = self.Q[i].copy()
 
-                e_ui = r_ui - p_u @ q_i   # scalar prediction error
+                e_ui = r_ui - p_u @ q_i
 
-                # Simultaneous gradient descent update
-                self.P[u] += self.lr * (e_ui * q_i - self.reg * p_u)
-                self.Q[i] += self.lr * (e_ui * p_u - self.reg * q_i)
+                self.P[u] += self.lr * c_ui * (e_ui * q_i - self.reg * p_u)
+                self.Q[i] += self.lr * c_ui * (e_ui * p_u - self.reg * q_i)
 
             # ── epoch loss (vectorised) ────────────────────────────────────────
             # Dot products for all observed entries at once:
@@ -177,9 +200,10 @@ class MatrixFactorizationRecommender:
             #   pred[k]         = sum of row_products[k]  = pᵤ · qᵢ
             row_products = self.P[observed[:, 0]] * self.Q[observed[:, 1]]
             pred   = row_products.sum(axis=1)                         # (nnz,)
-            errors = ratings - pred                                    # (nnz,)
+            errors = ratings - pred
+            weighted_errors = confidences * (errors ** 2)
 
-            mse_loss = float((errors ** 2).sum())
+            mse_loss = float(weighted_errors.sum())
             reg_loss = float(self.reg * (np.sum(self.P ** 2) + np.sum(self.Q ** 2)))
             epoch_loss = mse_loss + reg_loss
 
@@ -194,60 +218,66 @@ class MatrixFactorizationRecommender:
             "matrix_shape": [n_users, n_books],
             "n_factors": self.n_factors,
             "n_observed_ratings": n_observed,
+            "n_signals": n_observed,
             "sparsity": round(1.0 - n_observed / (n_users * n_books), 4),
             "initial_loss": round(initial_loss, 4),
             "final_loss": round(final_loss, 4),
             "epochs": self.n_epochs,
+            "init_method": init_method,
+            "als_iterations": 5,
+            "als_final_loss": round(als_losses[-1], 4) if als_losses else None,
+            "bpr_steps": bpr_steps,
         }
 
     # ── inference ─────────────────────────────────────────────────────────────
 
-    def recommend(self, user_id: int, n: int = 5) -> list[dict]:
+    def recommend(
+        self,
+        user_id: int,
+        n: int = 5,
+        *,
+        rated_book_ids: set[int] | None = None,
+    ) -> tuple[list[dict], bool]:
         """
         Score all books for a user with a single matrix-vector product, filter
         out already-rated books, and return the top-n predictions.
 
-        Scoring:
-            ŝᵤ = P[u] @ Q.T     (one dot product per book, batched)
-
-        Args:
-            user_id: DB primary key for the user.
-            n:       Number of recommendations to return.
-
         Returns:
-            List of dicts sorted by predicted_score descending:
-            [{"book_id": int, "predicted_score": float}, …]
+            (recommendations, cold_start) — cold_start is True when the user
+            has no star ratings in the training data; we fall back to the
+            mean user latent vector as a proxy.
         """
         if not self.is_fitted:
             raise RuntimeError(
                 "Recommender not fitted. POST /recommendations/train first."
             )
 
-        if user_id not in self.user_id_to_idx:
-            raise KeyError(
-                f"user_id {user_id} has no ratings in the training data. "
-                "The model must be re-trained after new users log ratings."
-            )
+        cold_start = user_id not in self.user_id_to_idx
+        if cold_start:
+            # Proxy vector: centroid of all trained user factors in latent space
+            p_u = self.P.mean(axis=0)
+            already_rated: set[int] = set()
+            if rated_book_ids:
+                for book_id in rated_book_ids:
+                    if book_id in self.book_id_to_idx:
+                        already_rated.add(self.book_id_to_idx[book_id])
+        else:
+            u_idx = self.user_id_to_idx[user_id]
+            p_u = self.P[u_idx]
+            already_rated = self.rated_books.get(u_idx, set())
 
-        u_idx = self.user_id_to_idx[user_id]
+        scores: np.ndarray = p_u @ self.Q.T
 
-        # ŝᵤ = P[u] @ Q.T — predict all books in one vectorised operation
-        # shape: (n_books,)
-        scores: np.ndarray = self.P[u_idx] @ self.Q.T
-
-        # Mask already-rated books — exclude them from recommendations
-        already_rated = self.rated_books.get(u_idx, set())
         if already_rated:
             scores[list(already_rated)] = -np.inf
 
         n_available = int((scores > -np.inf).sum())
         n = min(n, n_available)
         if n == 0:
-            return []
+            return [], cold_start
 
-        # np.argpartition is O(m) vs argsort's O(m log m); fine for top-k
         top_idx = np.argpartition(scores, -n)[-n:]
-        top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]   # sort descending
+        top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
 
         return [
             {
@@ -255,6 +285,36 @@ class MatrixFactorizationRecommender:
                 "predicted_score": round(float(scores[idx]), 4),
             }
             for idx in top_idx
+        ], cold_start
+
+
+    def similar_books_collaborative(self, book_id: int, n: int = 6) -> list[dict]:
+        """
+        Item-to-item CF: sim(i, j) = Q[i] · Q[j] in the MF latent space.
+        """
+        if not self.is_fitted or self.Q is None:
+            raise RuntimeError("MF recommender not fitted.")
+
+        if book_id not in self.book_id_to_idx:
+            return []
+
+        idx = self.book_id_to_idx[book_id]
+        scores: np.ndarray = self.Q @ self.Q[idx]
+        scores[idx] = -np.inf
+
+        n = min(n, int((scores > -np.inf).sum()))
+        if n == 0:
+            return []
+
+        top_idx = np.argpartition(scores, -n)[-n:]
+        top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
+
+        return [
+            {
+                "book_id": self.idx_to_book_id[int(i)],
+                "predicted_score": round(float(scores[i]), 4),
+            }
+            for i in top_idx
         ]
 
 

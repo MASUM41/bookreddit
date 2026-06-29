@@ -1,4 +1,4 @@
-We are building a website called BookReddit.
+We are building a website called Readit.
 
 Tech Stack: Use Python for the behind-the-scenes logic, React for the user interface, and a simple SQLite file to store the data.
 

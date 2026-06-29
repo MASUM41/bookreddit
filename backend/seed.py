@@ -5,10 +5,9 @@ Run from the backend/ directory:
     python seed.py
 """
 
-import hashlib
 import random
-import sys
 
+import bcrypt
 from app.database import Base, SessionLocal, engine
 from app.models import Book, InteractionType, Post, User, UserBookInteraction
 from app.recommender import recommender
@@ -19,7 +18,7 @@ random.seed(42)
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def hash_pw(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def log(msg: str) -> None:

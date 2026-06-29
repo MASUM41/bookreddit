@@ -1,5 +1,49 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Semantic tokens (switch with .dark on <html>) ───────────────────────── */
+:root {
+  --br-page: #dae0e6;
+  --br-surface: #ffffff;
+  --br-elevated: #ffffff;
+  --br-muted: #f6f7f8;
+  --br-border: #edeff1;
+  --br-text: #1a1a1b;
+  --br-text-secondary: #4b5563;
+  --br-text-muted: #6b7280;
+  --br-spinner-track: #edeff1;
+}
+
+.dark {
+  --br-page: #030303;
+  --br-surface: #1a1a1b;
+  --br-elevated: #272729;
+  --br-muted: #272729;
+  --br-border: #343536;
+  --br-text: #d7dadc;
+  --br-text-secondary: #a8a8a8;
+  --br-text-muted: #818384;
+  --br-spinner-track: #343536;
+}
+
+@theme inline {
+  --color-reddit-bg: var(--br-page);
+  --color-reddit-border: var(--br-border);
+  --color-reddit-muted: var(--br-muted);
+  --color-reddit-orange: #ff4500;
+  --color-br-surface: var(--br-surface);
+  --color-br-elevated: var(--br-elevated);
+  --color-br-text: var(--br-text);
+  --color-br-text-secondary: var(--br-text-secondary);
+  --color-br-text-muted: var(--br-text-muted);
+}
+
+body {
+  background-color: var(--br-page);
+  color: var(--br-text);
+}
+
 /* Vote button active states */
 .vote-up-active   { color: #ff4500; }
 .vote-down-active { color: #7193ff; }
@@ -15,7 +59,10 @@
 }
 .rec-rail::-webkit-scrollbar { height: 4px; }
 .rec-rail::-webkit-scrollbar-track { background: transparent; }
-.rec-rail::-webkit-scrollbar-thumb { background: #edeff1; border-radius: 2px; }
+.rec-rail::-webkit-scrollbar-thumb {
+  background: var(--br-border);
+  border-radius: 2px;
+}
 
 /* Line-clamp utility for body preview */
 .line-clamp-3 {
@@ -35,7 +82,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
   width: 24px; height: 24px;
-  border: 3px solid #edeff1;
+  border: 3px solid var(--br-spinner-track);
   border-top-color: #ff4500;
   border-radius: 50%;
   animation: spin .7s linear infinite;

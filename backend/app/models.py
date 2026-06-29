@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
+from typing import Optional
 
 from sqlalchemy import (
     DateTime,
@@ -34,8 +37,12 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    onboarding_completed: Mapped[bool] = mapped_column(default=False, nullable=False)
+    onboarding_archetype: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    onboarding_payload: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     posts: Mapped[list["Post"]] = relationship("Post", back_populates="author")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="author")
     interactions: Mapped[list["UserBookInteraction"]] = relationship(
         "UserBookInteraction", back_populates="user"
     )
@@ -47,9 +54,10 @@ class Book(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     author: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    isbn: Mapped[str | None] = mapped_column(String(13), unique=True, nullable=True)
-    genre: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    isbn: Mapped[Optional[str]] = mapped_column(String(13), unique=True, nullable=True)
+    genre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -68,12 +76,79 @@ class Post(Base):
     book_id: Mapped[int] = mapped_column(Integer, ForeignKey("books.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    media_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    media_type: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     author: Mapped["User"] = relationship("User", back_populates="posts")
     book: Mapped["Book"] = relationship("Book", back_populates="posts")
+    votes: Mapped[list["PostVote"]] = relationship(
+        "PostVote", back_populates="post", cascade="all, delete-orphan"
+    )
+    comments: Mapped[list["Comment"]] = relationship(
+        "Comment", back_populates="post", cascade="all, delete-orphan"
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("comments.id"), nullable=True, index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    post: Mapped["Post"] = relationship("Post", back_populates="comments")
+    author: Mapped["User"] = relationship("User", back_populates="comments")
+    parent: Mapped[Optional["Comment"]] = relationship(
+        "Comment", remote_side="Comment.id", back_populates="replies"
+    )
+    replies: Mapped[list["Comment"]] = relationship("Comment", back_populates="parent")
+    votes: Mapped[list["CommentVote"]] = relationship(
+        "CommentVote", back_populates="comment", cascade="all, delete-orphan"
+    )
+
+
+class CommentVote(Base):
+    __tablename__ = "comment_votes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    comment_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("comments.id"), nullable=False, index=True
+    )
+    value: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    comment: Mapped["Comment"] = relationship("Comment", back_populates="votes")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "comment_id", name="uq_user_comment_vote"),
+    )
+
+
+class PostVote(Base):
+    """Per-post upvote/downvote. Voting also syncs implicit book signals."""
+
+    __tablename__ = "post_votes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
+    value: Mapped[int] = mapped_column(Integer, nullable=False)  # +1 up, -1 down
+
+    post: Mapped["Post"] = relationship("Post", back_populates="votes")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "post_id", name="uq_user_post_vote"),
+    )
 
 
 class UserBookInteraction(Base):
