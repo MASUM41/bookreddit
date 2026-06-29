@@ -16,6 +16,7 @@ export default function HomePage() {
   return (
     <PageLayout
       left={leftRail}
+      mobileLeft={user ? <Sidebar compact /> : null}
       right={<TrendingPanel sort="hot" title="Popular today" />}
     >
       {loading ? (

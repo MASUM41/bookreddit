@@ -39,6 +39,7 @@ export default function PostPage() {
   return (
     <PageLayout
       left={leftRail}
+      mobileLeft={user ? <Sidebar compact /> : null}
       right={
         post ? (
           <RelatedPostsPanel postId={post.id} bookId={post.book_id} />

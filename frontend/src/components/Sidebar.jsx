@@ -21,7 +21,7 @@ function NavItem({ icon: Icon, label, to, active = false }) {
   )
 }
 
-export default function Sidebar() {
+export default function Sidebar({ compact = false }) {
   const location = useLocation()
   const [genres, setGenres] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +36,45 @@ export default function Sidebar() {
   const isHome = location.pathname === '/'
   const isPopular = location.pathname === '/popular'
   const isGenre = location.pathname.startsWith('/genre/')
+
+  if (compact) {
+    return (
+      <div className="bg-br-surface border border-reddit-border rounded-xl px-2.5 py-2">
+        <div className="flex gap-2 overflow-x-auto whitespace-nowrap pb-1">
+          <Link
+            to="/"
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold min-h-[36px]
+              ${isHome ? 'bg-orange-500/10 text-orange-600' : 'bg-reddit-muted text-br-text-secondary'}`}
+          >
+            <Home size={14} />
+            r/home
+          </Link>
+          <Link
+            to="/popular"
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold min-h-[36px]
+              ${isPopular ? 'bg-orange-500/10 text-orange-600' : 'bg-reddit-muted text-br-text-secondary'}`}
+          >
+            <TrendingUp size={14} />
+            r/popular
+          </Link>
+
+          {!loading && genres.slice(0, 8).map(({ genre, slug }) => {
+            const active = isGenre && location.pathname === `/genre/${slug}`
+            return (
+              <Link
+                key={slug}
+                to={`/genre/${slug}`}
+                className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold min-h-[36px]
+                  ${active ? 'bg-orange-500/10 text-orange-600' : 'bg-reddit-muted text-br-text-secondary'}`}
+              >
+                {genreSubredditLabel(genre)}
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <aside className="w-full shrink-0 space-y-3">

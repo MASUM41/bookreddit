@@ -44,7 +44,7 @@ export default function ProfilePage() {
   }, [username, me])
 
   return (
-    <PageLayout left={<Sidebar />}>
+    <PageLayout left={<Sidebar />} mobileLeft={<Sidebar compact />}>
       <Link
         to="/"
         className="inline-flex items-center gap-1.5 text-sm text-br-text-muted hover:text-br-text mb-4 transition-colors"

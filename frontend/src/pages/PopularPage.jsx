@@ -7,6 +7,7 @@ export default function PopularPage() {
   return (
     <PageLayout
       left={<Sidebar />}
+      mobileLeft={<Sidebar compact />}
       right={<TrendingPanel sort="top" title="Top this week" />}
     >
       <DiscussionFeed defaultSort="top" lockSort title="Popular" />

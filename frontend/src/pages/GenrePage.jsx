@@ -73,7 +73,7 @@ export default function GenrePage() {
   }
 
   return (
-    <PageLayout left={<Sidebar />}>
+    <PageLayout left={<Sidebar />} mobileLeft={<Sidebar compact />}>
       <button
         type="button"
         onClick={() => navigate(-1)}

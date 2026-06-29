@@ -37,7 +37,7 @@ export default function ReadNextPage() {
   }
 
   return (
-    <PageLayout left={<Sidebar />}>
+    <PageLayout left={<Sidebar />} mobileLeft={<Sidebar compact />}>
       <Link
         to="/"
         className="inline-flex items-center gap-1.5 text-sm text-br-text-muted hover:text-br-text mb-4"
