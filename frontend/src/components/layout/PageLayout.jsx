@@ -5,7 +5,7 @@
 export default function PageLayout({ left, right, children, mainClassName = '' }) {
   return (
     <div className="min-h-screen bg-reddit-bg">
-      <div className="max-w-[1280px] mx-auto px-4 py-4 flex gap-5">
+      <div className="max-w-[1280px] mx-auto px-2 sm:px-4 py-2.5 sm:py-4 flex gap-5">
         {left && (
           <aside className="hidden lg:block w-[272px] shrink-0 sticky top-[52px] self-start max-h-[calc(100vh-64px)] overflow-y-auto">
             {left}

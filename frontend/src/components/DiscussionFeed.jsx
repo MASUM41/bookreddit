@@ -27,7 +27,7 @@ export default function DiscussionFeed({
         <h1 className="text-lg font-bold text-br-text mb-3">{title}</h1>
       )}
 
-      <div className="bg-br-surface border border-reddit-border rounded-2xl px-4 py-2.5 mb-3 flex items-center gap-3">
+      <div className="bg-br-surface border border-reddit-border rounded-2xl px-3 sm:px-4 py-2.5 mb-3 flex items-center gap-2.5 sm:gap-3 flex-wrap">
         {SORT_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -44,12 +44,12 @@ export default function DiscussionFeed({
           </button>
         ))}
 
-        <div className="ml-auto">
+        <div className="ml-auto w-full sm:w-auto flex justify-end">
           {user ? (
             <Link
               to="/create-post"
               className="inline-flex items-center gap-1.5 bg-reddit-orange text-white rounded-full
-                         px-4 py-1 text-xs font-bold hover:bg-orange-600 transition-colors"
+                         px-4 py-1.5 text-xs font-bold hover:bg-orange-600 transition-colors min-h-[36px]"
             >
               <PenLine size={14} />
               Create Post
@@ -58,7 +58,7 @@ export default function DiscussionFeed({
             <Link
               to="/login"
               className="inline-flex items-center gap-1.5 border border-orange-500 text-orange-500
-                         rounded-full px-4 py-1 text-xs font-semibold hover:bg-orange-500/10 transition-colors"
+                         rounded-full px-4 py-1.5 text-xs font-semibold hover:bg-orange-500/10 transition-colors min-h-[36px]"
             >
               <PenLine size={14} />
               Log in to Post

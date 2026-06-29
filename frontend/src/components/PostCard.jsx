@@ -79,13 +79,13 @@ export default function PostCard({ post, fullContent = false }) {
   const commentsLabel = commentCount === 1 ? '1 Comment' : `${formatCount(commentCount)} Comments`
 
   return (
-    <article className="flex bg-br-surface border border-reddit-border rounded-2xl overflow-hidden
+    <article className="flex bg-br-surface border border-reddit-border rounded-xl sm:rounded-2xl overflow-hidden
                         hover:border-br-text-muted transition-colors">
-      <div className="flex flex-col items-center bg-reddit-muted/60 px-2 py-3 gap-0.5 min-w-[44px] select-none">
+      <div className="flex flex-col items-center bg-reddit-muted/60 px-1.5 sm:px-2 py-2.5 sm:py-3 gap-0.5 min-w-[40px] sm:min-w-[44px] select-none">
         <button
           onClick={e => { e.stopPropagation(); handleVote('up') }}
           disabled={voting}
-          className={`p-1 rounded-full transition-colors hover:bg-orange-500/10 disabled:opacity-50
+          className={`p-1.5 sm:p-1 rounded-full transition-colors hover:bg-orange-500/10 disabled:opacity-50
             ${userVote === 1 ? 'text-reddit-orange' : 'text-br-text-muted hover:text-reddit-orange'}`}
           aria-label="Upvote"
         >
@@ -102,7 +102,7 @@ export default function PostCard({ post, fullContent = false }) {
         <button
           onClick={e => { e.stopPropagation(); handleVote('down') }}
           disabled={voting}
-          className={`p-1 rounded-full transition-colors hover:bg-blue-500/10 disabled:opacity-50
+          className={`p-1.5 sm:p-1 rounded-full transition-colors hover:bg-blue-500/10 disabled:opacity-50
             ${userVote === -1 ? 'text-blue-500' : 'text-br-text-muted hover:text-blue-500'}`}
           aria-label="Downvote"
         >
@@ -110,7 +110,7 @@ export default function PostCard({ post, fullContent = false }) {
         </button>
       </div>
 
-      <div className="flex-1 min-w-0 p-3 pr-4">
+      <div className="flex-1 min-w-0 p-2.5 sm:p-3 sm:pr-4">
         <div className="flex items-center gap-1 text-xs text-br-text-muted mb-1.5 flex-wrap">
           <Link
             to={genreLink}
@@ -138,7 +138,7 @@ export default function PostCard({ post, fullContent = false }) {
         </div>
 
         <Link to={`/posts/${id}`} className="block group">
-          <h3 className="text-base font-semibold text-br-text leading-snug mb-1.5 line-clamp-2
+          <h3 className="text-[15px] sm:text-base font-semibold text-br-text leading-snug mb-1.5 line-clamp-2
                           group-hover:text-reddit-orange">
             {title}
           </h3>
@@ -190,7 +190,7 @@ export default function PostCard({ post, fullContent = false }) {
           </Link>
         )}
 
-        <div className="flex items-center gap-1 -ml-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 -ml-1 flex-wrap">
           <Link
             to={`/posts/${id}`}
             className="flex items-center gap-1.5 text-xs font-bold text-br-text-muted
@@ -205,7 +205,7 @@ export default function PostCard({ post, fullContent = false }) {
                        hover:bg-reddit-muted hover:text-br-text-secondary rounded-full px-2.5 py-1.5 transition-colors"
           >
             <Share2 size={16} />
-            Share
+            <span className="hidden sm:inline">Share</span>
           </button>
         </div>
       </div>

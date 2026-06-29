@@ -34,7 +34,7 @@ export default function HomePage() {
           <p className="text-sm text-br-text-muted mb-4">
             Log in to get personalised picks from our recommendation engine.
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link
               to="/signup"
               className="bg-reddit-muted text-br-text rounded-full px-5 py-2
